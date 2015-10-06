@@ -60,8 +60,7 @@ module ReadX
       insts = []
       flows = []
       
-      # `objdump -d #{@file}`
-      dumps = File.open('../testobj','rb'){|f| f.read}.split(/[\r\n]+/)
+      dumps = `objdump -d #{@file}`.split(/[\r\n]+/)
       dumps.map do |s| # check all jmp dsts (for backward jmp)
         if s =~ /^ +([a-f0-9]+):\t(.+?)\t(.+?)$/i
           addr, hexs, asms = $1, $2, $3
@@ -92,7 +91,7 @@ module ReadX
             # 400459:	00 00 00 
             insts[-1][:code][-1][1] += hexs
           elsif s.size == 3
-            # # "400440:	01 00          	add    %eax,(%rax)"
+            # # "400440:	01 00     	add    %eax,(%rax)"
             # # to [0x400440, [1,0], "add", "%eax,(%rax)"]
             asm = s[2].split(' ', 2)
             if asm[0][0] == 'j' # deal with jmps
