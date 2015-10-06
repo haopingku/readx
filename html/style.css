@@ -4,7 +4,7 @@ body {
     background-repeat: repeat;
 }
 body, p, div {
-    font: 16px consolas;
+    font: 14px consolas;
     color: #DDD;
 }
 a:link {}
@@ -77,16 +77,16 @@ a:hover {
     padding: 0 0.5em;
     margin-bottom: 1em;
 }
+.flow-inst-block >div {
+    margin: 3px 0 3px 0.5em;
+}
 .flow-inst-btn {
-    margin-left: 1em;
+    margin-right: 1em;
     cursor: pointer;
-    float: right;
 }
 .flow-inst-code-sec {
-    margin-bottom: 5px;
     color: #C0C2FF;
     font-size: 14px;
-    margin-left: 1em;
 }
 .flow-inst-code-addr {
     color: #44A82D;
@@ -102,12 +102,13 @@ a:hover {
 .flow-inst-code-disas-num { color: #FFC500;}
 .flow-inst-code-disas-reg { color: #FF72E2;}
 .flow-inst-block input[type=text] {
-    font-size: 13px;
+    font-family: consolas;
+    font-size: 14px;
     background-color: transparent;
     color: white;
     border: 1px solid gray;
     margin: 0 0.5em;
-    padding: 0.1em 0.5em;
+    padding: 0.1em 0.3em;
 }
 
 .blank-textarea {
@@ -131,6 +132,38 @@ a:hover {
     position: absolute;
     -background-color: rebeccapurple;
 }
+#summary-header-table {
+    margin: 3% 0 0 10%;
+}
+#summary-header-table td {
+    padding: 0.1em 0.6em;
+}
+#summary-header-table tr >td:nth-child(1) {
+    color: #7ECC7E;
+}
+#summary-header-table tr >td:nth-child(2) {
+    color: #F5BABB;
+}
 
-
-
+#contents >div {
+    -margin: 0 0 0 15%;
+}
+#contents >table {
+    margin-left: 15%;
+}
+#contents >table td {
+    padding: 0 1em;
+}
+#contents >table td:nth-child(1) {
+    color: #44A82D;
+}
+#contents >table td:nth-child(2) {
+    color: #1CAC9D;
+}
+#contents >table td:nth-child(3) {
+    color: #FFD5D5;
+}
+.contents-div {
+    color: #F951B3 !important;
+    padding-top: 1em !important;
+}

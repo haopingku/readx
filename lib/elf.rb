@@ -1,21 +1,29 @@
 class ReadX
   class Elf
     def initialize f
-      init_check
+      support_check
       @file = f
-      # @sio = StringIO.new(File.open(@file,'rb'){|f| f.read})
       @header = header
-      @section_header = section_header
-      @instructs = instructs
+      @contents = contents
+      @insts, @flows = insts
+      # @sio = StringIO.new(File.open(@file,'rb'){|f| f.read})
+    end
+    def support_check
+      begin
+        `readelf --version`
+        `objdump --version`
+      rescue Errno::ENOENT => e
+        raise NotSupportError.new(e.message.scan(/directory - (\S+)/)[0][0])
+      end
     end
     def to_data_js f
       require 'json'
       h = {
         filename: @file,
-        header: `readelf -h #{@file}`,
-        sections: `readelf -S #{@file}`,
-        insts: @instructs,
-        insts_lines: []
+        header: @header,
+        contents: @contents,
+        insts: @insts,
+        flows: @flows
       } 
       File.open(f,'w'){|f|
         f.puts(
@@ -27,63 +35,105 @@ class ReadX
         )
       }
     end
-    def init_check
-      # check readelf
-      # check objdump
-    end
     def header
-      # header = {}
-      # s = `readelf -h #{@file}`
-      # header[:entry_point] = s.scan(/^\s+Entry point address:\s+0x(\w+)/)[0][0].to_i(16)
-      # header
       `readelf -h #{@file}`
+        .split(/\n+/)
+        .select{|s| s =~ /^ +/}
+        .map{|s| s =~ /^ +(.+?): +(.+?)$/; [$1, $2]}
+        .inject({}){|h, a| h[a[0]] = a[1]; h}
     end
-    def section_header
-      sec_hdr = []
-      `readelf -S #{@file}`
-        .split(/\n/)
-        .map{|s|
-          if s =~ /  \[[ \d]+\]/
-            s = s.split
-            sec_hdr << {
-              name: s[1], type: s[2], addr: s[3], off: s[4],
-              size: s[5], es: s[6], flg: s[7], lk: s[8], inf: s[9], al: s[10]
-            }
-          end
-        }
-      sec_hdr
+    def contents
+      contents = []
+      `objdump -s #{@file}`.split(/\n+/).map do |s|
+        case s
+        when /^Contents of section (.+?):$/
+          contents << [$1, []]
+        when /^ +([a-f0-9]+) +((?:[a-f0-9]+ )+) (.+?)$/
+          contents[-1][1] << [$1, $2.strip, $3.strip]
+        end
+      end
+      contents
     end
-    def instructs
-      ins = []
-      sec = ''
-      # a = File.open('../testobj','rb'){|f| f.read}
-      a = `objdump -d #{@file}`
-        .split(/[\r\n]+/)
-      i = 0
-      sz = a.size
-      while i < sz
-        case a[i]
-        when /^Disassembly of section (.+?):$/
-          sec = $1
-        when /^[a-f0-9]+ <(.+?)>:$/i
-          ins << {id: i, sec: sec, sym: $1, code: []}
-        when /^ +([a-f0-9]+):\t/
-          _ = a[i].split("\t")
-          __ = _[1].strip.split(' ').map{|s| s.to_i(16)}
-          if _.size == 3
-            # 400440:	01 00                	add    %eax,(%rax)
-            # to [0x400440, [1,0], "add", "%eax,(%rax)"]
-            ins[-1][:code] << [_[0].to_i(16), __, *_[2].split(' ', 2)]
-          else
-            # instrcut that is too long to be split by objdump
-            # 400452:	69 0d 00 00 03 00 63 	imul   $0x63,0x30000(%rip)
-            # 400459:	00 00 00 
-            ins[-1][:code][-1][1] += __
+    def insts
+      id, sec, sym = 0, '', ''
+      jmp_srcs, jmp_dsts = [], []
+      jmp = nil
+      new_sym = nil
+      last = []
+      insts = []
+      flows = []
+      
+      # `objdump -d #{@file}`
+      dumps = File.open('../testobj','rb'){|f| f.read}.split(/[\r\n]+/)
+      dumps.map do |s| # check all jmp dsts (for backward jmp)
+        if s =~ /^ +([a-f0-9]+):\t(.+?)\t(.+?)$/i
+          addr, hexs, asms = $1, $2, $3
+          case asms
+          when /^j.+? +([^* ].+?)$/
+            jmp_srcs << addr.to_i(16)
+            jmp_dsts << $1.to_i(16)
           end
         end
-        i += 1
       end
-      ins
+      dumps.map do |s|
+        case s
+        when /^Disassembly of section (.+?):$/
+          sec = $1
+        when /^([a-f0-9]+) <(.+?)>:$/i
+          id = $1.to_i(16)
+          sym = $2
+          insts << {id: id, sec: sec, sym: sym, code: []}
+          jmp = nil # avoid jmp followed with new symbol
+          new_sym = true
+        when /^ +([a-f0-9]+):\t/i
+          s = s.split("\t")
+          addr = s[0].to_i(16)
+          hexs = s[1].strip.split(' ').map{|s| s.to_i(16)}
+          if s.size == 2
+            # instrcution too long to be splited, the second line
+            # 400452:	69 0d 00 00 03 00 63 	imul   $0x63,0x30000(%rip)
+            # 400459:	00 00 00 
+            insts[-1][:code][-1][1] += hexs
+          elsif s.size == 3
+            # # "400440:	01 00          	add    %eax,(%rax)"
+            # # to [0x400440, [1,0], "add", "%eax,(%rax)"]
+            asm = s[2].split(' ', 2)
+            if asm[0][0] == 'j' # deal with jmps
+              insts[-1][:code] << [addr, hexs, *asm]
+              if asm[1][0] == '*' # jmp *0xXXXX, can't deal this type, all as :jmp
+                jmp = :jmp
+              else
+                asm[1] =~ /^([xa-f0-9]+)/
+                flows << [id, $1.to_i(16), :jmp_succ]
+                if asm[0] == 'jmp' # jmp doesn't line to next addr
+                  jmp = :jmp
+                else
+                  jmp = "jx_#{flows.size}".to_sym
+                  flows << [id, 0, :jmp_fail]
+                end
+              end
+            elsif jmp
+              id = addr
+              insts << {id: id, sec: sec, sym: sym, code: [[addr, hexs, *asm]]}
+              if jmp != :jmp
+                flows[jmp[3..-1].to_i][1] = addr
+              end
+              jmp = nil
+            elsif jmp_dsts.include?(addr) && !new_sym # jmp destination
+              if !['ret', 'leave'].include?(last[2])
+                flows << [last[0], addr, :next]
+              end
+              id = addr
+              insts << {id: id, sec: sec, sym: sym, code: [[addr, hexs, *asm]]}
+            else
+              insts[-1][:code] << [addr, hexs, *asm]
+            end
+            last = [addr, hexs, *asm]
+          end # if s.size == 2
+          new_sym = false
+        end # case s
+      end # dumps.map
+      [insts, flows]
     end
   end
 end

@@ -4,6 +4,7 @@ function createSVG(tag, attrs) {
       el.setAttribute(k, attrs[k]);
     return el;
 }
+var z_index = 10;
 
 $(function(){
 
@@ -25,8 +26,10 @@ $('#labels >span[href]').click(function(){
 
 // $('#labels >span:first').click();
 $('#labels >span[href="#flow"]').click();
+// $('#labels >span[href="#summary"]').click();
 
 var blank_textarea = function(){
+  var panel = $('#panels');
   return $('<div class="blank-textarea"></div>')
     .append($('<textarea>'))
     .keydown(function(e){
@@ -35,9 +38,14 @@ var blank_textarea = function(){
     })
     .draggable()
     .css('position','absolute')
-    .css('top','20%')
-    .css('left','30%');
+    .css('top', panel.scrollTop() + panel.height() * 8 / 10)
+    .css('left', panel.scrollLeft() + panel.width() * 6 / 10)
+    .css('z-index', (z_index += 1))
+    .mousedown(function(){
+      $(this).css('z-index', (z_index += 1));
+    });
 };
+
 
 $('#label-btns >span')
   .append(
@@ -55,8 +63,8 @@ $('#panels').scroll(function(){
     .attr('width', ($(this).width()+$(this).scrollLeft()).toString());
 });
 
-// var l = createSVG('line', {x1: 0, x2: 50, y1: 0, y2: 100, stroke: 'red', 'stroke-width': 2});
-// $('#flow-svg').append(l);
+
+
 
 
 });

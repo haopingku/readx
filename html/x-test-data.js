@@ -15,7 +15,7 @@ x_data(
           [
             83
           ],
-          "<spen style='color:red'>push",
+          "push",
           "%ebx"
         ],
         [
