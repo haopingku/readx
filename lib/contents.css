@@ -1,0 +1,22 @@
+#contents >div {
+    -margin: 0 0 0 15%;
+}
+#contents >table {
+    margin-left: 15%;
+}
+#contents >table td {
+    padding: 0 1em;
+}
+#contents >table td:nth-child(1) {
+    color: #44A82D;
+}
+#contents >table td:nth-child(2) {
+    color: #1CAC9D;
+}
+#contents >table td:nth-child(3) {
+    color: #FFD5D5;
+}
+#contents .section {
+    color: #F951B3 !important;
+    padding-top: 1em !important;
+}

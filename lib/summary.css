@@ -1,0 +1,12 @@
+#summary-header {
+    margin: 3% 0 0 10%;
+}
+#summary-header >table td {
+    padding: 0.1em 0.6em;
+}
+#summary-header >table tr >td:nth-child(1) {
+    color: #7ECC7E;
+}
+#summary-header >table tr >td:nth-child(2) {
+    color: #F5BABB;
+}

@@ -1,0 +1,49 @@
+#flow-svg {
+    position: absolute;
+}
+.flow-inst-block {
+    padding: 10px;
+    border: 1px solid;
+    border-radius: 0.6em;
+    position: absolute;
+    background-color: rgba(116, 46, 169, 0.1);
+    font-size: 14px;
+    min-width: 16em;
+}
+.flow-inst-block td {
+    padding: 0 0.5em;
+    margin-bottom: 1em;
+}
+.flow-inst-block >div {
+    margin: 3px 0 3px 0.5em;
+}
+.flow-inst-btn {
+    margin-right: 1em;
+    cursor: pointer;
+}
+.flow-inst-code-sec {
+    color: #C0C2FF;
+    font-size: 14px;
+}
+.flow-inst-code-addr {
+    color: #44A82D;
+}
+.flow-inst-code-hex {
+    color: #1CAC9D;
+    display: none;
+}
+.flow-inst-code-disas {
+    color: #FFD5D5;
+    padding-left: 1em;
+}
+.flow-inst-code-disas-num { color: #FFC500;}
+.flow-inst-code-disas-reg { color: #FF72E2;}
+.flow-inst-block input[type=text] {
+    font-family: consolas;
+    font-size: 14px;
+    background-color: transparent;
+    color: white;
+    border: 1px solid gray;
+    margin: 0 0.5em;
+    padding: 0.1em 0.3em;
+}

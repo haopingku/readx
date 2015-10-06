@@ -1,8 +1,8 @@
-class ReadX
-  class Elf
-    def initialize f
+module ReadX
+  class Objdump
+    def initialize file
       support_check
-      @file = f
+      @file = file
       @header = header
       @contents = contents
       @insts, @flows = insts
@@ -13,25 +13,22 @@ class ReadX
         `readelf --version`
         `objdump --version`
       rescue Errno::ENOENT => e
-        raise NotSupportError.new(e.message.scan(/directory - (\S+)/)[0][0])
+        e.message =~ /directory - (\S+)/
+        raise NotSupportError.new($1)
       end
     end
-    def to_data_js f
+    def data_js f
       require 'json'
-      h = {
-        filename: @file,
-        header: @header,
-        contents: @contents,
-        insts: @insts,
-        flows: @flows
-      } 
-      File.open(f,'w'){|f|
+      File.open(f, 'w'){|f|
         f.puts(
-          '$(function(){',
-          'x_data(',
-          JSON.pretty_generate(h),
-          ')',
-          '});'
+          'readx_data =',
+          JSON.pretty_generate(
+            file: @file,
+            header: @header,
+            contents: @contents,
+            insts: @insts,
+            flows: @flows
+          )
         )
       }
     end

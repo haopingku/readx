@@ -3,18 +3,22 @@
   <head>
     <meta charset="utf-8">
     <title>readx</title>
-    <link href="style.css" rel="stylesheet">
+    <link href="./lib/style.css" rel="stylesheet">
+    <link href="./lib/summary.css" rel="stylesheet">
+    <link href="./lib/contents.css" rel="stylesheet">
+    <link href="./lib/flow.css" rel="stylesheet">
     <script src="http://code.jquery.com/jquery-1.11.0.min.js"></script>
     <script src="http://code.jquery.com/ui/1.11.4/jquery-ui.js"></script>
-    <script src="script.js"></script>
-    <script src="data.js"></script>
-    <script src="../../x-test-data.js"></script>
+    <script src="readx.js"></script>
+    <script src="./lib/summary.js"></script>
+    <script src="./lib/contents.js"></script>
+    <script src="./lib/flow.js"></script>
+    <script src="./lib/script.js"></script>
   </head>
   <body>
     <div id="main">
       <div id="labels">
-        <span id="label-fn"></span>
-        <!-- <span href="#summary">Summary</span> -->
+        <span id="label-file"></span>
         <span href="#summary">Summary</span>
         <span href="#contents">Contents</span>
         <span href="#flow">Flow</span>
@@ -25,7 +29,6 @@
         </span>
       </div>
       <div id="panels">
-        <!-- <div id="summary"></div> -->
         <div id="summary"></div>
         <div id="contents"></div>
         <div id="flow"></div>
