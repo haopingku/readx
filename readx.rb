@@ -9,9 +9,9 @@ module ReadX
   end
   def self.readx args
     case arg = args.shift
-    when '--version'
+    when '-v', '--version'
       puts('readx 0.0.1')
-    when nil
+    when '-h', 'help', nil
       puts('usage: readx <file> [opt] ...')
     else
       if !File.file?(arg)
@@ -36,7 +36,7 @@ module ReadX
           dir = File.dirname(__FILE__)
           f.puts(File
             .open("#{dir}/readx.html", 'r'){|f_| f_.read}
-            .gsub(/(href|src)="\.\//, "\\1=\"#{dir}/")
+            .gsub(/(script|link) +(href|src)="\.\//, "\\1 \\2=\"#{dir}/")
           )
         }
       end
