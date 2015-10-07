@@ -19,8 +19,8 @@ module ReadX
       else
         case File.open(arg,'rb'){|f| f.read(16)}
         when /^\x7fELF/
-          require_relative 'lib/objdump'
-          Objdump.new(arg).data_js('readx.js')
+          require_relative 'lib/elf'
+          Elf.new(arg).data_js('readx.js')
           d = File.dirname(__FILE__)
           s = File.open("#{d}/readx.html", 'r'){|f| f.read}
                   .gsub(/(href|src)="\.\//, "\\1=\"#{d}/")

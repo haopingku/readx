@@ -1,47 +1,14 @@
 module ReadX
-  class Objdump
-    def initialize file
-      support_check
-      @file = file
-      @header = header
-      @contents = contents
-      @insts, @flows = insts
-      # @sio = StringIO.new(File.open(@file,'rb'){|f| f.read})
+  module Objdump
+    begin
+      `objdump --version`
+    rescue Errno::ENOENT => e
+      e.message =~ /directory - (\S+)/
+      raise NotSupportError.new($1)
     end
-    def support_check
-      begin
-        `readelf --version`
-        `objdump --version`
-      rescue Errno::ENOENT => e
-        e.message =~ /directory - (\S+)/
-        raise NotSupportError.new($1)
-      end
-    end
-    def data_js f
-      require 'json'
-      File.open(f, 'w'){|f|
-        f.puts(
-          'readx_data =',
-          JSON.pretty_generate(
-            file: @file,
-            header: @header,
-            contents: @contents,
-            insts: @insts,
-            flows: @flows
-          )
-        )
-      }
-    end
-    def header
-      `readelf -h #{@file}`
-        .split(/\n+/)
-        .select{|s| s =~ /^ +/}
-        .map{|s| s =~ /^ +(.+?): +(.+?)$/; [$1, $2]}
-        .inject({}){|h, a| h[a[0]] = a[1]; h}
-    end
-    def contents
+    def self.contents file
       contents = []
-      `objdump -s #{@file}`.split(/\n+/).map do |s|
+      `objdump -s #{file}`.split(/\n+/).map do |s|
         case s
         when /^Contents of section (.+?):$/
           contents << [$1, []]
@@ -51,7 +18,7 @@ module ReadX
       end
       contents
     end
-    def insts
+    def self.insts file
       id, sec, sym = 0, '', ''
       jmp_srcs, jmp_dsts = [], []
       jmp = nil
@@ -60,7 +27,7 @@ module ReadX
       insts = []
       flows = []
       
-      dumps = `objdump -d #{@file}`.split(/[\r\n]+/)
+      dumps = `objdump -d #{file}`.split(/[\r\n]+/)
       dumps.map do |s| # check all jmp dsts (for backward jmp)
         if s =~ /^ +([a-f0-9]+):\t(.+?)\t(.+?)$/i
           addr, hexs, asms = $1, $2, $3
