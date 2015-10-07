@@ -4,7 +4,16 @@ module ReadX
       `objdump --version`
     rescue Errno::ENOENT => e
       e.message =~ /directory - (\S+)/
-      raise NotSupportError.new($1)
+      raise NotSupport::Cmd, $1
+    end
+    def self.header file
+      header = []
+      s = `objdump -f #{file}`
+      s =~ /file format (.+?)\narchitecture: (.+?), (flags 0x.+?):\n(.+?)\n/
+      header += [['file format', $1], ['architecture', $2], [$3, $4]]
+      s =~ /start address (.+?)\n/
+      header << ['start address', $1]
+      header
     end
     def self.contents file
       contents = []

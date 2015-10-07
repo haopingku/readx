@@ -1,10 +1,10 @@
 require 'stringio'
 
 module ReadX
-  class NotSupportError < Exception
-    attr_reader :not_support
-    def initialize not_support 
-      @not_support = not_support
+  module NotSupport
+    class Cmd < Exception
+    end
+    class X < Exception
     end
   end
   def self.readx args
@@ -17,22 +17,37 @@ module ReadX
       if !File.file?(arg)
         puts("readx: file \"#{arg}\" not exist.")
       else
-        case File.open(arg,'rb'){|f| f.read(16)}
+        # parse file
+        case File.open(arg,'rb'){|f| f.read(8)}
         when /^\x7fELF/
           require_relative 'lib/elf'
-          Elf.new(arg).data_js('readx.js')
-          d = File.dirname(__FILE__)
-          s = File.open("#{d}/readx.html", 'r'){|f| f.read}
-                  .gsub(/(href|src)="\.\//, "\\1=\"#{d}/")
-          File.open('readx.html', 'w'){|f| f.puts(s)}
+          x = Elf.new(arg)
+        when /^MZ/
+          require_relative 'lib/pe'
+          x = PE.new(arg)
+        else
+          raise NotSupport::X, arg
         end
+        # create js and html files
+        require 'json'
+        File.open('readx.js','w'){|f|
+          f.puts('readx_data = '+JSON.pretty_generate(x.data))}
+        File.open('readx.html', 'w'){|f|
+          dir = File.dirname(__FILE__)
+          f.puts(File
+            .open("#{dir}/readx.html", 'r'){|f_| f_.read}
+            .gsub(/(href|src)="\.\//, "\\1=\"#{dir}/")
+          )
+        }
       end
     end
-  rescue NotSupportError => e
+  rescue NotSupport::Cmd => e
     puts(
-      "readx: not support \"#{e.not_support}\", " +
-      'please check that it is installed and searchable in $PATH.'
+      "readx: not support command \"#{e.message}\", " +
+      'please check to be installed and searchable in PATH.'
     )
+  rescue NotSupport::X => e
+    puts("readx: not support this type of executable file (#{e.message}).")
   end
 end
 

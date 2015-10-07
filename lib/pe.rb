@@ -1,10 +1,9 @@
 require_relative 'objdump'
-require_relative 'readelf'
 module ReadX
-  class Elf
+  class PE
     def initialize file
       @file = file
-      @header = ReadElf.header(@file)
+      @header = Objdump.header(@file)
       @contents = Objdump.contents(@file)
       @insts, @flows = Objdump.insts(@file)
       # @sio = StringIO.new(File.open(@file,'rb'){|f| f.read})
