@@ -21,13 +21,13 @@ module ReadX
         case s
         when /^Contents of section (.+?):$/
           contents << [$1, []]
-        when /^ +([a-f0-9]+) +((?:[a-f0-9]+ )+) (.+?)$/
-          contents[-1][1] << [$1, $2.strip, $3.strip]
+        when /^ +([a-f0-9]+) +((?:[a-f0-9]+ )+) +(.{16})$/
+          contents[-1][1] << [$1, $2, $3]
         end
       end
       contents
     end
-    def self.insts file
+    def self.insts file, t=:bin
       id, sec, sym = 0, '', ''
       jmp_srcs, jmp_dsts = [], []
       jmp = nil
@@ -36,7 +36,12 @@ module ReadX
       insts = []
       flows = []
       
-      dumps = `objdump -d #{file}`.split(/[\r\n]+/)
+      dumps = case t
+              when :bin
+                `objdump -d #{file}`
+              when :dump
+                File.open(file){|f| f.read}
+              end.split(/[\r\n]+/)
       dumps.map do |s| # check all jmp dsts (for backward jmp)
         if s =~ /^ +([a-f0-9]+):\t(.+?)\t(.+?)$/i
           addr, hexs, asms = $1, $2, $3
@@ -92,7 +97,7 @@ module ReadX
               end
               jmp = nil
             elsif jmp_dsts.include?(addr) && !new_sym # jmp destination
-              if !['ret', 'leave'].include?(last[2])
+              if ![/^ret/].map{|r| r =~ last[2]}.any?
                 flows << [last[0], addr, :next]
               end
               id = addr

@@ -6,6 +6,25 @@ module ReadX
     end
     class X < Exception
     end
+    class NoFile < Exception
+    end
+  end
+  def self.file_exist file
+    if !File.file?(file)
+      raise NotSupport::NoFile, file
+    end
+  end
+  def self.create_html data
+    require 'json'
+    File.open('readx.js','w'){|f|
+      f.puts('readx_data = '+JSON.pretty_generate(data))}
+    File.open('readx.html', 'w'){|f|
+      dir = File.dirname(__FILE__)
+      f.puts(File
+        .open("#{dir}/readx.html", 'r'){|f_| f_.read}
+        .gsub(/(script|link) +(href|src)="\.\//, "\\1 \\2=\"#{dir}/")
+      )
+    }
   end
   def self.readx args
     case arg = args.shift
@@ -13,34 +32,36 @@ module ReadX
       puts('readx 0.0.1')
     when '-h', 'help', nil
       puts('usage: readx <file> [opt] ...')
-    else
-      if !File.file?(arg)
-        puts("readx: file \"#{arg}\" not exist.")
-      else
-        # parse file
-        case File.open(arg,'rb'){|f| f.read(8)}
-        when /^\x7fELF/
-          require_relative 'lib/elf'
-          x = Elf.new(arg)
-        when /^MZ/
-          require_relative 'lib/pe'
-          x = PE.new(arg)
-        else
-          raise NotSupport::X, arg
-        end
-        # create js and html files
-        require 'json'
-        File.open('readx.js','w'){|f|
-          f.puts('readx_data = '+JSON.pretty_generate(x.data))}
-        File.open('readx.html', 'w'){|f|
-          dir = File.dirname(__FILE__)
-          f.puts(File
-            .open("#{dir}/readx.html", 'r'){|f_| f_.read}
-            .gsub(/(script|link) +(href|src)="\.\//, "\\1 \\2=\"#{dir}/")
-          )
-        }
+    when /-objdump(?:=(.+?))?$/
+      case $1 || args.shift
+      when 'flow'
+        f = args.shift
+        file_exist(f)
+        require_relative 'lib/objdump'
+        insts, flows = Objdump.insts(f, :dump)
+        create_html(
+          file: f,
+          header: [['no data due to objdump=flow mode']],
+          insts: insts,
+          flows: flows
+        )
       end
+    else
+      file_exist(arg)
+      case File.open(arg,'rb'){|f| f.read(8)}
+      when /^\x7fELF/
+        require_relative 'lib/elf'
+        x = Elf.new(arg)
+      when /^MZ/
+        require_relative 'lib/pe'
+        x = PE.new(arg)
+      else
+        raise NotSupport::X, arg
+      end
+      create_html(x.data)
     end
+  rescue NotSupport::NoFile => e
+    puts("readx: file \"#{e.message}\" not exist.")
   rescue NotSupport::Cmd => e
     puts(
       "readx: not support command \"#{e.message}\", " +
