@@ -32,19 +32,26 @@ module ReadX
       puts('readx 0.0.1')
     when '-h', 'help', nil
       puts('usage: readx <file> [opt] ...')
-    when /-objdump(?:=(.+?))?$/
-      case $1 || args.shift
-      when 'flow'
-        f = args.shift
-        file_exist(f)
-        require_relative 'lib/objdump'
-        insts, flows = Objdump.insts(f, :dump)
-        create_html(
-          file: f,
-          header: [['no data due to objdump=flow mode']],
-          insts: insts,
-          flows: flows
-        )
+    when '--import'
+      h = {file: '(import mode)', header: []}
+      while arg = args.shift
+        case arg
+        when /flow=(.+?)/
+          f = $1
+          file_exist(f)
+          require_relative 'lib/objdump'
+          insts, flows = Objdump.insts(f, :dump)
+          h[:header] << ["flow loaded in file #{f}"]
+          h[:insts] = insts
+          h[:flows] = flows
+        when /contents=(.+?)/
+          f = $1
+          file_exist(f)
+          require_relative 'lib/objdump'
+          h[:header] << ["contents loaded in file #{f}"]
+          h[:contents] = Objdump.contents(f, :dump)
+        end
+        create_html(h)
       end
     else
       file_exist(arg)

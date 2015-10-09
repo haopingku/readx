@@ -15,9 +15,14 @@ module ReadX
       header << ['start address', $1]
       header
     end
-    def self.contents file
+    def self.contents file, t=:bin
       contents = []
-      `objdump -s #{file}`.split(/\n+/).map do |s|
+      case t
+      when :bin
+        `objdump -s #{file}`
+      when :dump
+        File.open(file){|f| f.read}
+      end.split(/\n+/).map do |s|
         case s
         when /^Contents of section (.+?):$/
           contents << [$1, []]
@@ -89,10 +94,13 @@ module ReadX
                   flows << [id, 0, :jmp_fail]
                 end
               end
+            elsif asm[0] =~ /^ret/
+              insts[-1][:code] << [addr, hexs, *asm]
+              jmp = :ret
             elsif jmp
               id = addr
               insts << {id: id, sec: sec, sym: sym, code: [[addr, hexs, *asm]]}
-              if jmp != :jmp
+              if jmp =~ /^jx/
                 flows[jmp[3..-1].to_i][1] = addr
               end
               jmp = nil
