@@ -58,10 +58,12 @@ module ReadX
         end
       end
       dumps.map do |s|
+        ENV['DEBUG'] && puts("dump: #{s}")
         case s
         when /^Disassembly of section (.+?):$/
           sec = $1
         when /^([a-f0-9]+) <(.+?)>:$/i
+          ENV['DEBUG'] && puts("new symbol #{sym}")
           id = $1.to_i(16)
           sym = $2
           insts << {id: id, sec: sec, sym: sym, code: []}
@@ -81,6 +83,7 @@ module ReadX
             # # to [0x400440, [1,0], "add", "%eax,(%rax)"]
             asm = s[2].split(' ', 2)
             if asm[0][0] == 'j' # deal with jmps
+              ENV['DEBUG'] && puts("asm[0][0]=='j': #{asm[1]}")
               insts[-1][:code] << [addr, hexs, *asm]
               if asm[1][0] == '*' # jmp *0xXXXX, can't deal this type, all as :jmp
                 jmp = :jmp
@@ -88,29 +91,35 @@ module ReadX
                 asm[1] =~ /^([xa-f0-9]+)/
                 flows << [id, $1.to_i(16), :jmp_succ]
                 if asm[0] == 'jmp' # jmp doesn't line to next addr
+                  ENV['DEBUG'] && puts('jmp = :jmp')
                   jmp = :jmp
                 else
+                  ENV['DEBUG'] && puts("jmp = :#{jmp}")
                   jmp = "jx_#{flows.size}".to_sym
                   flows << [id, 0, :jmp_fail]
                 end
               end
-            elsif asm[0] =~ /^ret/
-              insts[-1][:code] << [addr, hexs, *asm]
-              jmp = :ret
             elsif jmp
+              ENV['DEBUG'] && puts("if jmp: #{jmp}")
               id = addr
-              insts << {id: id, sec: sec, sym: sym, code: [[addr, hexs, *asm]]}
+              insts << {id: id, sec: sec, sym: nil, code: [[addr, hexs, *asm]]}
               if jmp =~ /^jx/
                 flows[jmp[3..-1].to_i][1] = addr
               end
               jmp = nil
+            elsif asm[0] =~ /^ret/
+              ENV['DEBUG'] && puts('if asm[0] =~ /^ret/')
+              insts[-1][:code] << [addr, hexs, *asm]
+              jmp = :ret
             elsif jmp_dsts.include?(addr) && !new_sym # jmp destination
+              ENV['DEBUG'] && puts(new_sym ? 'if new_sym' : 'if addr in jmp_dsts')
               if ![/^ret/].map{|r| r =~ last[2]}.any?
                 flows << [last[0], addr, :next]
               end
               id = addr
-              insts << {id: id, sec: sec, sym: sym, code: [[addr, hexs, *asm]]}
+              insts << {id: id, sec: sec, sym: nil, code: [[addr, hexs, *asm]]}
             else
+              ENV['DEBUG'] && puts('else')
               insts[-1][:code] << [addr, hexs, *asm]
             end
             last = [addr, hexs, *asm]
