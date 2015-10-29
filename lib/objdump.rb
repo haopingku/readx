@@ -2,37 +2,64 @@ module ReadX
   module Objdump
     begin
       `objdump --version`
+      @enable = true
     rescue Errno::ENOENT => e
-      e.message =~ /directory - (\S+)/
-      raise NotSupport::Cmd, $1
+      @enable = false
     end
-    def self.header file
-      header = []
-      s = `objdump -f #{file}`
-      s =~ /file format (.+?)\narchitecture: (.+?), (flags 0x.+?):\n(.+?)\n/
-      header += [['file format', $1], ['architecture', $2], [$3, $4]]
-      s =~ /start address (.+?)\n/
-      header << ['start address', $1]
-      header
+    def self.enable?
+      @enable
     end
-    def self.contents file, t=:bin
-      contents = []
-      case t
-      when :bin
-        `objdump -s #{file}`
-      when :dump
-        File.open(file){|f| f.read}
-      end.split(/\n+/).map do |s|
+    def self.parse str
+      h = {}
+      ary = str.split(/\n/)
+      while s = ary.shift
         case s
+        when /^(.+?): +file format (.+?)$/
+          h[:file] = $1
+          h[:attributes] ||= []
+          h[:attributes] << ['file format', $2]
+        when /architecture: (.+?), flags (0x.+?):/
+          h[:attributes] << ['architecture', $1]
+          flags = $2
+          ary.shift =~ /^(.+)$/
+          h[:attributes] << ['flags', "#{flags}: #{$1}"]
+          ary.shift =~ /^start address (.+?)$/
+          h[:attributes] << ['start address', $1]
         when /^Contents of section (.+?):$/
-          contents << [$1, []]
-        when /^ +([a-f0-9]+) +((?:[a-f0-9]+ )+) +(.{16})$/
-          contents[-1][1] << [$1, $2, $3]
+          h[:contents] ||= []
+          h[:contents] << [$1, []]
+          while s = ary.shift
+            if s =~ /^ +([a-f0-9]+) +((?:[a-f0-9]+ )+) +(.{16})$/
+              h[:contents][-1][1] << [$1, $2, $3]
+            else
+              ary.unshift(s)
+              break
+            end
+          end
+        when /^Disassembly of section (.+?):$/
+          ary.unshift(s)
+          dumps = []
+          while s = ary.shift # extract disas part in dump file
+            case s
+            when /^$/
+            when /^Disassembly of section (.+?):$/
+              dumps << s
+            when /^([a-f0-9]+) <(.+?)>:$/i
+              dumps << s
+            when /^ +([a-f0-9]+):\t/i
+              dumps << s
+            when /^\t\t\t\d+:/
+            else
+              ary.unshift(s)
+              break
+            end
+          end
+          h.merge!(parse_disas(dumps))
         end
       end
-      contents
+      h
     end
-    def self.insts file, t=:bin
+    def self.parse_disas dumps
       id, sec, sym = 0, '', ''
       jmp_srcs, jmp_dsts = [], []
       jmp = nil
@@ -40,13 +67,6 @@ module ReadX
       last = []
       insts = []
       flows = []
-      
-      dumps = case t
-              when :bin
-                `objdump -d #{file}`
-              when :dump
-                File.open(file){|f| f.read}
-              end.split(/[\r\n]+/)
       dumps.map do |s| # check all jmp dsts (for backward jmp)
         if s =~ /^ +([a-f0-9]+):\t(.+?)\t(.+?)$/i
           addr, hexs, asms = $1, $2, $3
@@ -63,7 +83,7 @@ module ReadX
         when /^Disassembly of section (.+?):$/
           sec = $1
         when /^([a-f0-9]+) <(.+?)>:$/i
-          ENV['DEBUG'] && puts("new symbol #{sym}")
+          ENV['DEBUG'] && puts("  new symbol #{sym}")
           id = $1.to_i(16)
           sym = $2
           insts << {id: id, sec: sec, sym: sym, code: []}
@@ -83,24 +103,25 @@ module ReadX
             # # to [0x400440, [1,0], "add", "%eax,(%rax)"]
             asm = s[2].split(' ', 2)
             if asm[0][0] == 'j' # deal with jmps
-              ENV['DEBUG'] && puts("asm[0][0]=='j': #{asm[1]}")
+              ENV['DEBUG'] && puts("  asm[0][0]=='j': #{asm[1]}")
               insts[-1][:code] << [addr, hexs, *asm]
-              if asm[1][0] == '*' # jmp *0xXXXX, can't deal this type, all as :jmp
+              if asm[1][0] == '*'
+                # jmp *0xXXXX, can't deal this type, all as :jmp
                 jmp = :jmp
               else
                 asm[1] =~ /^([xa-f0-9]+)/
                 flows << [id, $1.to_i(16), :jmp_succ]
                 if asm[0] == 'jmp' # jmp doesn't line to next addr
-                  ENV['DEBUG'] && puts('jmp = :jmp')
+                  ENV['DEBUG'] && puts(  'jmp = :jmp')
                   jmp = :jmp
                 else
-                  ENV['DEBUG'] && puts("jmp = :#{jmp}")
+                  ENV['DEBUG'] && puts(  "jmp = :#{jmp}")
                   jmp = "jx_#{flows.size}".to_sym
                   flows << [id, 0, :jmp_fail]
                 end
               end
             elsif jmp
-              ENV['DEBUG'] && puts("if jmp: #{jmp}")
+              ENV['DEBUG'] && puts("  if jmp: #{jmp}")
               id = addr
               insts << {id: id, sec: sec, sym: nil, code: [[addr, hexs, *asm]]}
               if jmp =~ /^jx/
@@ -108,18 +129,20 @@ module ReadX
               end
               jmp = nil
             elsif asm[0] =~ /^ret/
-              ENV['DEBUG'] && puts('if asm[0] =~ /^ret/')
+              ENV['DEBUG'] && puts('  if asm[0] =~ /^ret/')
               insts[-1][:code] << [addr, hexs, *asm]
               jmp = :ret
             elsif jmp_dsts.include?(addr) && !new_sym # jmp destination
-              ENV['DEBUG'] && puts(new_sym ? 'if new_sym' : 'if addr in jmp_dsts')
-              if ![/^ret/].map{|r| r =~ last[2]}.any?
-                flows << [last[0], addr, :next]
+              ENV['DEBUG'] &&
+                puts(new_sym ? '  if new_sym' : 'if addr in jmp_dsts')
+              if ![/^ret/].map{|r| last[2] =~ r}.any?
+                ENV['DEBUG'] && puts("    add flow")
+                flows << [id, addr, :next]
               end
               id = addr
               insts << {id: id, sec: sec, sym: nil, code: [[addr, hexs, *asm]]}
             else
-              ENV['DEBUG'] && puts('else')
+              ENV['DEBUG'] && puts('  normal')
               insts[-1][:code] << [addr, hexs, *asm]
             end
             last = [addr, hexs, *asm]
@@ -127,7 +150,7 @@ module ReadX
           new_sym = false
         end # case s
       end # dumps.map
-      [insts, flows]
+      {instructions: insts, flows: flows}
     end
   end
 end

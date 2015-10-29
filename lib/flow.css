@@ -36,10 +36,11 @@
     color: #FFD5D5;
     padding-left: 1em;
 }
-.flow-inst-code-disas-num { color: #FFD64B;}
+.flow-inst-code-disas-imm { color: #FFD64B;}
+.flow-inst-code-disas-num { color: #31DD1A;}
 .flow-inst-code-disas-reg { color: #FF7287;}
 .flow-inst-code-disas-tar { color: #9C63D6;}
-.flow-inst-code-disas-call { color: #D0B3EA; cursor: pointer;}
+.flow-inst-code-disas-call { color: #31DD1A; cursor: pointer;}
 .flow-inst-block input[type=text] {
     font-family: consolas;
     font-size: 14px;

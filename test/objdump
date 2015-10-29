@@ -1,0 +1,31 @@
+
+a.o:     file format pe-i386
+architecture: i386, flags 0x00000039:
+HAS_RELOC, HAS_DEBUG, HAS_SYMS, HAS_LOCALS
+start address 0x00000000
+
+Contents of section .text:
+ 0000 5589e5c6 05020000 0034c9c3 5589e5c7  U........4..U...
+ 0010 05000000 000c0000 00c9c390           ............    
+Contents of section .data:
+ 0000 31323334 00000000                    1234....        
+
+Disassembly of section .text:
+
+00000000 <_func>:
+   0:	55                   	push   %ebp
+   1:	89 e5                	mov    %esp,%ebp
+   3:	c6 05 02 00 00 00 34 	movb   $0x34,0x2
+			5: dir32	.data
+   a:	c9                   	leave  
+   b:	c3                   	ret    
+
+0000000c <_func2>:
+   c:	55                   	push   %ebp
+   d:	89 e5                	mov    %esp,%ebp
+   f:	c7 05 00 00 00 00 0c 	movl   $0xc,0x0
+  16:	00 00 00 
+			11: dir32	_b
+  19:	c9                   	leave  
+  1a:	c3                   	ret    
+  1b:	90                   	nop

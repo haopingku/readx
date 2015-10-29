@@ -5,19 +5,14 @@ function __readx_complete {
   then
     case ${COMP_WORDS[1]} in
     -*)
-      COMPREPLY=(`compgen -W "--import --version --help" -- "${COMP_WORDS[1]}"`)
+      COMPREPLY=(`compgen -W "--dumpfile --version --help" -- "${COMP_WORDS[1]}"`)
       ;;
     *)
       COMPREPLY=(`compgen -f -- "${COMP_WORDS[1]}"`)
       ;;
     esac
   else
-    case ${COMP_WORDS[1]} in
-    --import)
-      complete -o nospace -S '=' -F __readx_complete readx
-      COMPREPLY=(`compgen -W "flow contents" -- "${COMP_WORDS[COMP_CWORD]}"`)
-      ;;
-    esac
+    COMPREPLY=(`compgen -f -- "${COMP_WORDS[COMP_CWORD]}"`)
   fi
 }
 complete -F __readx_complete readx
