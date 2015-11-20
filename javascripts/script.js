@@ -7,8 +7,14 @@ function createSVG(tag, attrs) {
 }
 function blank_textarea(parent_){
   var parent = $('#'+parent_), panel = $('#panels');
+  var textarea = $('<textarea spellcheck="false" rows="3">')
+    .keypress(function(e){
+      if(e.keyCode == 13){
+        // $(this).attr('rows', $(this).val().split(/\n/).length+1);
+      }
+    });
   return $('<div class="notepad"></div>')
-    .append($('<textarea spellcheck="false">'))
+    .append(textarea)
     .keydown(function(e){if(e.which == 27)$(this).remove();})
     .draggable()
     .css('position','absolute')

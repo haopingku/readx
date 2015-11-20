@@ -56,19 +56,18 @@ flow.init = function(d){
 
 var create_insts_block = function(v, h){
   var sec = v.sec + (v.sym ? (' &lt;'+v.sym+'&gt;') : '');
-  var syntax_colorize = function(s){
+  var syntax_colorizer = function(s){
     s = s || '';
     var c = 'flow-inst-code-disas';
     if(m = s.match(/^([0-9a-f]+) <(.+?)>$/)){
-      return '<span class="'+c+'-call" href="flow-inst-addr' +
+      return '<span class="'+c+'-call" href="flow-inst-addr-' +
         m[1] + '">' + m[1] + ' &lt;' + m[2] + '&gt;</span>';
     } else {
       return s
         .replace(/(%\w+)/g, '<span class="'+c+'-reg">$1</span>')
-        .replace(/((\$)-?(?:0x)?[a-f0-9]+)/i,
-          '<span class="'+c+'-imm">$1</span>')
-        .replace(/^((?:0x)?[a-f0-9]+),/i,
-          '<span class="'+c+'-num">$1</span>,');
+        .replace(/(\$-?(?:0x)?[a-f0-9]+)/i, '<span class="'+c+'-imm">$1</span>')
+        .replace(/(-?(?:0x)?[a-f0-9]+)\(/i, '<span class="'+c+'-imm">$1</span>(')
+        .replace(/^((?:0x)?[a-f0-9]+),/i, '<span class="'+c+'-num">$1</span>,');
       // /(?:\b|^)((?:-)?(?:\$)?0x[a-f0-9]+)(?:\b|$)/ig,
       // '<span class="flow-inst-code-disas-num">$1</span>');
     }
@@ -126,7 +125,7 @@ var create_insts_block = function(v, h){
         }).join(' ')+
         '</td>')
       .append('<td class="flow-inst-code-disas">'+c[2]+'</td>')
-      .append('<td class="flow-inst-code-disas">'+syntax_colorize(c[3])+'</td>');
+      .append('<td class="flow-inst-code-disas">'+syntax_colorizer(c[3])+'</td>');
     table.append(tr);
   });
   $('#flow').append(div.append(table));

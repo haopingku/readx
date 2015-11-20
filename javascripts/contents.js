@@ -9,13 +9,17 @@ contents.init = function(d){
       var tr = $('<tr>'),
           td = $('<td class="section" colspan="3">'+v[0]+'</td>');
       table.append(tr.append(td));
+      var adr = [], hex = [], chr = [];
       $.map(v[1], function(v_){
-        var tr = $('<tr>');
-        tr.append($('<td>').html(v_[0]))
-          .append($('<td>').html(v_[1]))
-          .append($('<td>').html(v_[2].replace(' ','&nbsp;')));
-        table.append(tr);
+        adr.push(v_[0]);
+        hex.push(v_[1]);
+        chr.push(v_[2].replace(' ','&nbsp;'));
       });
+      var tr = $('<tr>');
+      tr.append($('<td>').html(adr.join('<br>')))
+        .append($('<td>').html(hex.join('<br>')))
+        .append($('<td>').html(chr.join('<br>')));
+      table.append(tr);
     });
     $('#contents').append(table);
   }
