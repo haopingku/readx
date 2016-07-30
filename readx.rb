@@ -4,7 +4,7 @@ module ReadX
   end
   def self.create_html
     require 'json'
-    fname = "readx_#{@data[:file].gsub(/\W/,'_')}.html"
+    fname = "readx_#{@data[:file].sub(/^(?:\.\.?\/)+/,'').gsub(/\W/,'_')}.html"
     File.open(fname, 'w'){|f|
       dir = File.dirname(__FILE__)
       f.puts(
@@ -39,6 +39,16 @@ module ReadX
       instructions: [],
       flows: []
     }
+    data_merge = ->(h){
+      @data.merge!(h){|k,o,n|
+        case k
+        when :attributes
+          o + n
+        else
+          n
+        end
+      }
+    }
     case arg = args.shift
     when '-v', '--version'
       puts('readx 1.0.1')
@@ -50,8 +60,8 @@ module ReadX
       )
     when /^--dumpfile$/
       args.map{|f|
-        if h = dumpfile(IO.read(f))
-          @data.merge!(h)
+        if h = dumpfile(File.open(f){|f| f.read})
+          data_merge.(h)
           @create_html = true
         else
           STDERR.puts("readx: unknown dumpfile #{f}.")
@@ -62,14 +72,16 @@ module ReadX
         @data[:file] = arg
         case File.open(arg,'rb'){|f| f.read(8)}
         when /^\x7fELF/
-          Objdump.enable? &&
-            @data.merge!(Objdump.parse(`objdump -fsd #{@data[:file]}`))
-          Readelf.enable? &&
-            @data.merge!(Readelf.parse(`readelf -h #{@data[:file]}`))
+          if Readelf.enable?
+            data_merge.(Readelf.parse(`readelf -h #{@data[:file]}`))
+          end
+          if Objdump.enable?
+            data_merge.(Objdump.parse(`objdump -fsd #{@data[:file]}`))
+          end
           @create_html = true
         when /^MZ/
           Objdump.enable? &&
-            @data.merge!(Objdump.parse(`objdump -fsd #{@data[:file]}`))
+            data_merge.(Objdump.parse(`objdump -fsd #{@data[:file]}`))
           @create_html = true
         else
           STDERR.puts(
